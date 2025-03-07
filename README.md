@@ -26,9 +26,9 @@ Run the script with your dataset of song lyrics:
 ```python song_lyrics_analysis.py```
 
 ## Project Structure
-song_lyrics_analysis.py – Main script for analysis and visualization.
-lyrics_dataset.csv – Sample dataset of song lyrics (if applicable).
-README.md – Project documentation.
+1. song_lyrics_analysis.py – Main script for analysis and visualization.
+2. lyrics_dataset.csv – Sample dataset of song lyrics.
+3. README.md – Project documentation.
 
 ## Results
 1. Sentiment classification of lyrics
