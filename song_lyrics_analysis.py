@@ -1,65 +1,66 @@
 # Code to analyse what people sing, and their lyrics, if it's a happy or sad one.
 
+from google.colab import files
 import pandas as pd
-import nltk
-from nltk.sentiment import SentimentIntensityAnalyzer
-from textblob import TextBlob
+from collections import Counter
+from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import seaborn as sns
-from wordcloud import WordCloud
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
 
-# To download necessary resources|Do note that even when I tried this process first time, it gave me so much trouble too
-nltk.download('vader_lexicon')
-nltk.download('stopwords')
-nltk.download('punkt')
+# Download necessary nltk resources
+nltk.download("punkt")
+nltk.download('punkt_tab')
+nltk.download("vader_lexicon")
 
-# Load the dataset gotten
-df = pd.read_csv('song_lyrics.csv')
+# Upload files manually
+uploaded = files.upload()  # This will prompt you to upload files, Txt files are appreciated
 
+# Read uploaded text files
+lyrics_data = {}
+for filename in uploaded.keys():
+    with open(filename, "r", encoding="utf-8") as file: # This encodes it into text too, but to avoid unnecessary wahala
+        lyrics_data[filename] = file.read()
 
-def preprocessed_text(text):
-    """This cleans and tokenizes lyrics"""
-    text = text.lower()
-    tokens = nltk.word_tokenize(text)
-    words = [word for word in tokens if word.isalpha()]
-    return ' '.join(words)
+# Convert to DataFrame
+df = pd.DataFrame(list(lyrics_data.items()), columns=["Filename", "Lyrics"])
 
-
-df['Cleaned_Lyrics'] = df['Lyrics'].apply(preprocessed_text)
-
-# Sentiment Analysis using VADER
+# Initialize Sentiment Analyzer
 sia = SentimentIntensityAnalyzer()
-df['Sentiment'] = df['Cleaned_Lyrics'].apply(lambda x: sia.polarity_scores(x)['compound'])
-df['Sentiment_Label'] = df['Sentiment'].apply(lambda x: 'Positive' if x > 0 else ('Negative' if x < 0 else 'Neutral'))
 
-# Sentiment Distribution Visualization
-sns.countplot(x='Sentiment_Label', data=df, palette='coolwarm')
-plt.title('Sentiment Distribution of Song Lyrics')
+# Apply sentiment analysis
+df["Sentiment"] = df["Lyrics"].apply(lambda text: sia.polarity_scores(text)["compound"])
+
+# Categorize sentiment "This is how you know which song screams positivity or not"
+df["Sentiment_Label"] = df["Sentiment"].apply(lambda score: "Positive" if score > 0.05 else ("Negative" if score < -0.05 else "Neutral"))
+
+# Tokenize and clean lyrics "Make sure the punkt_tab has been infused properly into the code, cus I had issues with it too"
+df["Tokens"] = df["Lyrics"].apply(lambda text: nltk.word_tokenize(text.lower()))
+
+# Flatten list of all words
+all_words = [word for tokens in df["Tokens"] for word in tokens]
+
+# Count word frequency
+word_counts = Counter(all_words)
+
+# Create a word cloud for it
+wordcloud = WordCloud(width=800, height=400, background_color="black").generate(" ".join(all_words))
+
+# Plot word cloud
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation="bilinear")
+plt.axis("off")
+plt.title("Word Cloud of Lyrics")
 plt.show()
 
-# To Generate WordCloud for the Positive and Negative Lyrics, if available
-positive_text = ' '.join(df[df['Sentiment_Label'] == 'Positive']['Cleaned_Lyrics'])
-negative_text = ' '.join(df[df['Sentiment_Label'] == 'Negative']['Cleaned_Lyrics'])
-
-plt.figure(figsize=(12, 5))
-plt.subplot(1, 2, 1)
-plt.imshow(WordCloud(width=400, height=200, background_color='white').generate(positive_text))
-plt.axis('off')
-plt.title('Positive Lyrics WordCloud')
-
-plt.subplot(1, 2, 2)
-plt.imshow(WordCloud(width=400, height=200, background_color='black').generate(negative_text))
-plt.axis('off')
-plt.title('Negative Lyrics WordCloud')
-
+# Sentiment distribution plot
+plt.figure(figsize=(8, 4))
+sns.histplot(df["Sentiment"], bins=20, kde=True, color="blue")
+plt.title("Sentiment Score Distribution")
+plt.xlabel("Sentiment Score")
+plt.ylabel("Frequency")
 plt.show()
 
-# Emotion Analysis using NRC Lexicon (Requires NRC dataset, load as needed)
-
-# Example approach (assuming a dictionary mapping words to emotions)
-# df['Emotion'] = df['Cleaned_Lyrics'].apply(lambda x: detect_emotion(x))
-# sns.countplot(x='Emotion', data=df, palette='viridis')
-# plt.title('Emotion Analysis of Song Lyrics')
-# plt.show()
-
-print("Analysis complete!")
+# Displays the first few rows
+df.head()
